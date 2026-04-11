@@ -70,6 +70,24 @@ dev = [
     "types-aiofiles>=23.2.0",      # Type stubs for aiofiles
 ]
 
+llm-claude = [
+    "anthropic>=0.25",
+]
+
+llm-openai = [
+    "openai>=1.0",
+]
+
+llm-gemini = [
+    "google-generativeai>=0.3",
+]
+
+all-llm = [
+    "anthropic>=0.25",
+    "openai>=1.0",
+    "google-generativeai>=0.3",
+]
+
 security = [
     "pip-audit>=2.6.0",            # Python dependency audit
 ]

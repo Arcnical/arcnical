@@ -81,6 +81,26 @@ streamlit run arcnical/ui/app.py
 
 ## Features
 
+## LLM Provider Support
+
+Arcnical supports multiple LLM providers for intelligent code review:
+
+**Supported Providers:**
+- Claude (default) - High quality analysis
+- OpenAI (coming soon)
+- Gemini (coming soon)
+
+**Usage:**
+```bash
+# Default (Claude)
+arcnical analyze ./repo
+
+# Custom provider
+arcnical analyze ./repo --llm-provider openai
+```
+
+For detailed setup: See [LLM Provider Configuration](docs/configuring_providers.md)
+
 ### Layered Analysis
 
 Arcnical organizes analysis into 4 ordered layers:
