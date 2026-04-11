@@ -12,7 +12,9 @@
       "Bash(.venv/Scripts/python -m pytest tests/unit/test_claude_provider.py -v)",
       "Bash(.venv/Scripts/python -c \"from anthropic import APIConnectionError; import inspect; print\\(inspect.signature\\(APIConnectionError.__init__\\)\\)\")",
       "Bash(.venv/Scripts/python -m pytest tests/unit/test_provider_factory.py -v)",
-      "Bash(.venv/Scripts/python -m pytest tests/unit/test_mock_provider.py -v)"
+      "Bash(.venv/Scripts/python -m pytest tests/unit/test_mock_provider.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/unit/test_json_exporter_fixed.py -v)",
+      "Bash(.venv/Scripts/python -m pytest tests/unit/test_json_exporter.py -v)"
     ]
   }
 }
