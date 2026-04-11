@@ -10,26 +10,59 @@ Prove that a tool combining **deterministic static analysis** with a **retrieval
 
 ## Quick Start
 
+### Prerequisites
+
+- Python 3.11 or 3.12 (Python 3.13 is supported but may show deprecation warnings from dependencies)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
+- An [Anthropic API key](https://console.anthropic.com/) for L4 LLM review
+- _(Optional)_ [gitleaks](https://github.com/gitleaks/gitleaks) binary for secret scanning — install via `winget install gitleaks` (Windows) or `brew install gitleaks` (macOS)
+
 ### Installation
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/arcnical/arcnical.git
 cd arcnical
 
-# Install with uv (recommended)
-uv sync
+# 2. Install uv if not already installed
+pip install uv
 
-# Or with pip
-pip install -e .
+# 3. Create the virtual environment and install all dependencies
+uv sync --all-extras
+
+# 4. Activate the virtual environment
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source .venv/bin/activate
+```
+
+> **Note for Windows users:** If `pytest`, `ruff`, `mypy`, or `arcnical` are not recognised after activating the venv, add the Scripts directory to your PATH permanently:
+> ```powershell
+> [Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$PWD\.venv\Scripts", "User")
+> ```
+> Then restart your terminal.
+
+### Environment Setup
+
+Create a `.env` file in the project root (it is git-ignored):
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...       # Required for L4 LLM review
+GITHUB_TOKEN=ghp_...               # Optional — needed for private GitHub repos
+```
+
+Or export them in your shell:
+
+```bash
+# macOS/Linux
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Windows PowerShell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
 ### First Run
-
-Set your Anthropic API key:
-```bash
-export ANTHROPIC_API_KEY="sk-..."
-```
 
 Analyze a local repository:
 ```bash
@@ -163,15 +196,30 @@ arcnical/
 ### Setup
 
 ```bash
+# Install all dependencies including dev extras
 uv sync --all-extras
+
+# Activate the virtual environment
+# Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# macOS/Linux:
+source .venv/bin/activate
 ```
 
 ### Run Tests
 
 ```bash
+# Run all tests
 pytest tests/ -v
-pytest tests/unit/test_schema.py -v  # Schema tests only
+
+# Run schema tests only
+pytest tests/unit/test_schema.py -v
+
+# Run with coverage report
+pytest tests/ -v --cov=arcnical --cov-report=term-missing
 ```
+
+> **Note:** If `pytest` is not on your PATH, use `.venv/Scripts/pytest` (Windows) or `.venv/bin/pytest` (macOS/Linux), or activate the venv first.
 
 ### Lint & Type Check
 
@@ -189,6 +237,15 @@ arcnical analyze .
 # View reports
 streamlit run arcnical/ui/app.py
 ```
+
+### Known Issues & Workarounds
+
+| Issue | Workaround |
+|-------|-----------|
+| `pytest`/`arcnical` not found on Windows | Activate `.venv` first or use `.venv\Scripts\pytest` |
+| `uv sync` fails with `gitleaks` error | Already fixed in `pyproject.toml` — `gitleaks` is a binary, not a PyPI package. Install it separately if needed. |
+| `datetime.utcnow()` deprecation warning | Harmless — comes from pydantic internals, not our code |
+| `typer[all]` extra warning | Harmless — `typer` v0.24+ no longer uses the `all` extra |
 
 ## Acceptance Criteria
 

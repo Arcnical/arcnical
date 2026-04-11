@@ -71,7 +71,6 @@ dev = [
 ]
 
 security = [
-    "gitleaks>=8.18.0",            # Secret detection
     "pip-audit>=2.6.0",            # Python dependency audit
 ]
 
