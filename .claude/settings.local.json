@@ -14,7 +14,18 @@
       "Bash(.venv/Scripts/python -m pytest tests/unit/test_provider_factory.py -v)",
       "Bash(.venv/Scripts/python -m pytest tests/unit/test_mock_provider.py -v)",
       "Bash(.venv/Scripts/python -m pytest tests/unit/test_json_exporter_fixed.py -v)",
-      "Bash(.venv/Scripts/python -m pytest tests/unit/test_json_exporter.py -v)"
+      "Bash(.venv/Scripts/python -m pytest tests/unit/test_json_exporter.py -v)",
+      "Bash(streamlit run:*)",
+      "Bash(pip show:*)",
+      "Bash(python -m streamlit --version)",
+      "Bash(python3 -m streamlit --version)",
+      "Bash(python -m streamlit run streamlit_app.py)",
+      "Bash(python -m arcnical analyze ./test_repo --depth standard --llm-provider claude --json)",
+      "Bash(PYTHONUTF8=1 python -m arcnical analyze ./test_repo --depth standard --llm-provider claude --json)",
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(PYTHONUTF8=1 python -m pytest tests/ -v --cov=arcnical)",
+      "Bash(PYTHONUTF8=1 python -m pytest tests/unit/test_metrics.py::TestComplexityCalculator::test_calculate_file_complexity -v)"
     ]
   }
 }

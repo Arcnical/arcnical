@@ -216,7 +216,7 @@ class L3Detector:
                         "fan_out": fan_out,
                         "threshold": self.INSTABILITY_THRESHOLD
                     },
-                    category=RecommendationCategory.COUPLING
+                    category=RecommendationCategory.MAINTAINABILITY
                 )
                 findings.append(finding)
         
@@ -257,7 +257,7 @@ class L3Detector:
                         "dependencies": dependencies[:5],  # Show first 5
                         "threshold": self.FAN_OUT_THRESHOLD
                     },
-                    category=RecommendationCategory.COUPLING
+                    category=RecommendationCategory.MAINTAINABILITY
                 )
                 findings.append(finding)
         

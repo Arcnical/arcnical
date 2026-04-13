@@ -18,15 +18,15 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from arcnical.orchestrator.orchestrator import Orchestrator 
-from arcnical.schema import AnalysisDepth, Metadata
+from arcnical.orchestrator.orchestrator import Orchestrator
+from arcnical.schema import AnalysisDepth, Metadata, TargetClassification
 from arcnical.review.llm.provider_factory import LLMProviderFactory
 from arcnical.review.llm.base import ProviderError, ProviderConfigError
 from arcnical.cli.config import ProviderConfigLoader
 from arcnical.orchestrator.l4_integration import L4Integration
 
 logger = logging.getLogger(__name__)
-console = Console()
+console = Console(legacy_windows=False)
 
 
 @click.group()
@@ -134,7 +134,9 @@ def analyze(
             console.print("🔍 L1: Qualifying repository...", style="yellow")
             report = orchestrator.run_l1_qualification()
             
-            if not report.l1.qualification.is_qualified and not force:
+            if report.qualification.classification not in (
+                TargetClassification.APPLICATION, TargetClassification.LIBRARY
+            ) and not force:
                 console.print(
                     "❌ Repository does not qualify for analysis. "
                     "Use --force to override.",
@@ -142,7 +144,9 @@ def analyze(
                 )
                 raise click.Abort()
             
-            if not report.l1.qualification.is_qualified and force:
+            if report.qualification.classification not in (
+                TargetClassification.APPLICATION, TargetClassification.LIBRARY
+            ) and force:
                 console.print(
                     "⚠️  Repository did not qualify, but --force specified. "
                     "Continuing...",
@@ -317,19 +321,19 @@ def analyze(
             
             # Count findings
             critical = sum(
-                1 for f in report.findings 
+                1 for f in report.recommendations 
                 if f.severity.value == "Critical"
             )
             high = sum(
-                1 for f in report.findings 
+                1 for f in report.recommendations 
                 if f.severity.value == "High"
             )
             medium = sum(
-                1 for f in report.findings 
+                1 for f in report.recommendations 
                 if f.severity.value == "Medium"
             )
             low = sum(
-                1 for f in report.findings 
+                1 for f in report.recommendations 
                 if f.severity.value == "Low"
             )
             

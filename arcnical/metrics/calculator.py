@@ -16,7 +16,7 @@ from collections import defaultdict
 
 try:
     from radon.complexity import cc_visit
-    from radon.metrics import mi_visit, RADON_AVAILABLE
+    from radon.metrics import mi_visit
     RADON_AVAILABLE = True
 except ImportError:
     RADON_AVAILABLE = False
@@ -51,7 +51,7 @@ class ComplexityCalculator:
                 content = f.read()
             
             # Get all function complexities
-            results = cc_visit(content, min='A')  # Get all functions
+            results = cc_visit(content)  # Get all functions
             
             # Find matching function
             for result in results:
@@ -73,7 +73,7 @@ class ComplexityCalculator:
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            results = cc_visit(content, min='A')
+            results = cc_visit(content)
             
             if not results:
                 return 0.0, 0.0, 0.0

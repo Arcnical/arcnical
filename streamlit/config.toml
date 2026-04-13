@@ -1,0 +1,32 @@
+[theme]
+# Color scheme matching your design
+primaryColor = "#1976d2"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
+# Custom colors
+[theme.colors]
+critical = "#d32f2f"      # Red
+high = "#ff9800"          # Orange
+medium = "#fbc02d"        # Yellow
+low = "#388e3c"           # Green
+accent = "#1976d2"        # Blue
+
+[client]
+# Sidebar configuration
+showSidebarNavigation = false
+toolbarMode = "minimal"
+
+[logger]
+level = "info"
+
+[client.toolbarMode]
+mode = "minimal"
+
+[server]
+# Server settings
+port = 8501
+headless = true
+runOnSave = true
