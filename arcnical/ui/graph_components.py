@@ -42,7 +42,9 @@ class StreamlitGraphComponent:
 
         findings = analysis_data.get("findings", [])
         file_structure = analysis_data.get("file_structure", {})
-        files = file_structure.get("files", {})
+        # Normalise all paths to forward slashes so Windows backslash keys
+        # (from file_loc) and POSIX keys (from build_file_imports) always match.
+        files = {k.replace("\\", "/"): v for k, v in file_structure.get("files", {}).items()}
 
         for filename, loc in files.items():
             if isinstance(loc, (int, float)):
@@ -55,7 +57,11 @@ class StreamlitGraphComponent:
                 )
 
         # Edges from static import analysis (available in Quick + Standard)
-        file_imports = file_structure.get("imports", {})
+        raw_imports = file_structure.get("imports", {})
+        file_imports = {
+            k.replace("\\", "/"): [t.replace("\\", "/") for t in v]
+            for k, v in raw_imports.items()
+        }
         for src, targets in file_imports.items():
             if src not in graph:
                 continue

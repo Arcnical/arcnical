@@ -820,7 +820,7 @@ code, pre {{
 }}
 
 .about-hero-desc {{
-  font-size: 14px; color: var(--text-secondary); line-height: 1.7; max-width: 640px;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.7;
 }}
 
 .team-card {{
@@ -1038,10 +1038,38 @@ def _normalize_analysis_data(data: dict) -> dict:
     if "metrics" not in data:
         data["metrics"] = {}
     if "total_files" not in data["metrics"]:
-        # prefer explicit count, fall back to len(files dict)
         data["metrics"]["total_files"] = (
             fs.get("total_files") or len(fs.get("files", {}))
         )
+
+    # ── module_metrics (per-file table) ──
+    if "module_metrics" not in data:
+        files_dict   = {k.replace("\\", "/"): v for k, v in fs.get("files", {}).items()}
+        imports_dict = {k.replace("\\", "/"): v for k, v in fs.get("imports", {}).items()}
+        rows = []
+        for path, loc in files_dict.items():
+            deps = len(imports_dict.get(path, []))
+            if loc > 1000:
+                risk = "CRITICAL"
+            elif loc > 600:
+                risk = "HIGH"
+            elif loc > 300:
+                risk = "MEDIUM"
+            elif loc > 100:
+                risk = "LOW"
+            else:
+                risk = "OK"
+            rows.append({
+                "module": path,
+                "loc": loc,
+                "complexity": round(loc / 50, 1),
+                "functions": 0,
+                "classes": 0,
+                "dependencies": deps,
+                "risk": risk,
+            })
+        rows.sort(key=lambda m: m["loc"], reverse=True)
+        data["module_metrics"] = rows
 
     return data
 
@@ -1245,13 +1273,13 @@ def render_sidebar(data: dict) -> dict:
 
         provider = st.selectbox(
             "LLM Provider",
-            options=["claude", "openai", "gemini"],
-            index=["claude", "openai", "gemini"].index(
-                data.get("llm_provider", "claude")
-            ),
+            options=["claude", "openai", "gemini (v0.3.0)"],
+            index=0,
             key="provider_select",
             label_visibility="collapsed",
         )
+        # Normalise — strip any coming-soon suffix before passing downstream
+        provider = provider.split(" ")[0]
 
         # Provider model display
         model_map = {
@@ -1260,6 +1288,20 @@ def render_sidebar(data: dict) -> dict:
             "gemini": "gemini-1.5-pro",
         }
         model_name = model_map.get(provider, "claude-sonnet-4-6")
+
+        env_key_map = {"claude": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "gemini": "GOOGLE_API_KEY"}
+        import os as _os
+        api_key = st.text_input(
+            "API Key",
+            value=_os.environ.get(env_key_map.get(provider, "ANTHROPIC_API_KEY"), ""),
+            type="password",
+            placeholder=f"{env_key_map.get(provider, 'API_KEY')} …",
+            key="api_key_input",
+        ).strip()
+
+        _key_prefix = {"claude": "sk-ant-", "openai": "sk-", "gemini": "AI"}
+        if api_key and not api_key.startswith(_key_prefix.get(provider, "")):
+            st.warning(f"Key doesn't look like a {provider} key — expected prefix `{_key_prefix.get(provider, '?')}`")
 
         depth = st.radio(
             "Analysis Depth",
@@ -1348,6 +1390,7 @@ def render_sidebar(data: dict) -> dict:
         "repo_path": repo_path,
         "run_clicked": run_clicked,
         "model": model_name,
+        "api_key": api_key,
     }
 
 
@@ -1761,9 +1804,47 @@ def render_findings(data: dict):
 def render_about():
     st.markdown("""
     <div class="about-hero">
-      <div class="about-hero-title">Arcnical</div>
-      <div class="about-hero-tag">⬡ Architecture Needs Intelligence · v0.2.0</div>
-      <div class="about-hero-desc">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;">
+        <div>
+          <div class="about-hero-title">Arcnical</div>
+          <div class="about-hero-tag">⬡ Architecture Needs Intelligence · v0.2.0</div>
+        </div>
+        <div style="flex-shrink:0;width:280px;">
+          <svg viewBox="0 0 680 260" role="img" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+            <defs><clipPath id="ac-lensclip"><circle cx="148" cy="130" r="88"/></clipPath></defs>
+            <path d="M 148,42 A 88,88 0 0,1 224.2,86" fill="none" stroke="#d902ee" stroke-width="7" stroke-linecap="butt"/>
+            <path d="M 227,93 A 88,88 0 0,1 218,177" fill="none" stroke="#d902ee" stroke-width="7" stroke-linecap="butt"/>
+            <path d="M 214,183 A 88,88 0 0,1 148,218" fill="none" stroke="#e6b84a" stroke-width="7" stroke-linecap="butt"/>
+            <path d="M 141,218 A 88,88 0 0,1 75,177" fill="none" stroke="#e6b84a" stroke-width="7" stroke-linecap="butt"/>
+            <path d="M 72,170 A 88,88 0 0,1 148,42" fill="none" stroke="#f162ff" stroke-width="7" stroke-linecap="butt"/>
+            <circle cx="148" cy="130" r="66" fill="none" stroke="#d902ee" stroke-width="1.2" opacity="0.4"/>
+            <polygon points="148,102 172.2,116 172.2,144 148,158 123.8,144 123.8,116" fill="none" stroke="#e6b84a" stroke-width="2" stroke-linejoin="round"/>
+            <line x1="148" y1="102" x2="148" y2="66" stroke="#d902ee" stroke-width="1.5" opacity="0.9"/>
+            <line x1="172.2" y1="144" x2="205" y2="163" stroke="#d902ee" stroke-width="1.5" opacity="0.9"/>
+            <line x1="123.8" y1="144" x2="91" y2="163" stroke="#d902ee" stroke-width="1.5" opacity="0.9"/>
+            <circle cx="148" cy="66" r="3.5" fill="#e6b84a"/>
+            <circle cx="205" cy="163" r="3.5" fill="#e6b84a"/>
+            <circle cx="91" cy="163" r="3.5" fill="#e6b84a"/>
+            <circle cx="148" cy="102" r="2.5" fill="#f162ff"/>
+            <circle cx="172.2" cy="116" r="2.5" fill="#f162ff"/>
+            <circle cx="172.2" cy="144" r="2.5" fill="#f162ff"/>
+            <circle cx="148" cy="158" r="2.5" fill="#f162ff"/>
+            <circle cx="123.8" cy="144" r="2.5" fill="#f162ff"/>
+            <circle cx="123.8" cy="116" r="2.5" fill="#f162ff"/>
+            <circle cx="148" cy="130" r="7" fill="#d902ee"/>
+            <circle cx="148" cy="130" r="3" fill="#00c8b4"/>
+            <line x1="148" y1="62" x2="148" y2="68" stroke="#e6b84a" stroke-width="1.5" opacity="0.6"/>
+            <line x1="214" y1="130" x2="208" y2="130" stroke="#e6b84a" stroke-width="1.5" opacity="0.6"/>
+            <line x1="82" y1="130" x2="88" y2="130" stroke="#e6b84a" stroke-width="1.5" opacity="0.6"/>
+            <line x1="148" y1="198" x2="148" y2="192" stroke="#e6b84a" stroke-width="1.5" opacity="0.6"/>
+            <text x="268" y="152" font-family="'Helvetica Neue', Arial, sans-serif" font-size="72" font-weight="800" letter-spacing="-2">
+              <tspan fill="#d902ee">Arc</tspan><tspan fill="#e6b84a">nical</tspan>
+            </text>
+            <text x="269" y="183" font-family="'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="600" letter-spacing="2.5" fill="#00c8b4">Architecture Meets Intelligence</text>
+          </svg>
+        </div>
+      </div>
+      <div class="about-hero-desc" style="margin-top:16px;">
         An AI-powered GitHub repository analyzer that detects architectural issues,
         security vulnerabilities, and code quality problems across L1–L4 analysis layers.
         Built with Python 3.11+, tree-sitter parsers, networkx knowledge graphs,
@@ -1986,6 +2067,7 @@ def main():
                     repo_path=repo,
                     depth=config["depth"],
                     provider=config["provider"],
+                    api_key=config.get("api_key", ""),
                 )
                 if success and result:
                     result = _normalize_analysis_data(result)

@@ -467,6 +467,34 @@ class Orchestrator:
             file_count=self._parse_result.total_files if self._parse_result else 0,
         )
 
+    def build_per_file_metrics(self) -> dict:
+        """
+        Return {rel_fwd_path: {functions, classes, methods}} from the parse result.
+        Paths are normalised to forward slashes.
+        """
+        if not self._parse_result:
+            return {}
+
+        repo_root = Path(self.repo_path).resolve()
+        result: dict = {}
+
+        for sym in self._parse_result.symbols:
+            try:
+                rel = Path(sym.file).resolve().relative_to(repo_root).as_posix()
+            except (ValueError, OSError):
+                continue
+            if rel not in result:
+                result[rel] = {"functions": 0, "classes": 0, "methods": 0}
+            t = sym.type.value if hasattr(sym.type, "value") else str(sym.type)
+            if t == "function":
+                result[rel]["functions"] += 1
+            elif t == "class":
+                result[rel]["classes"] += 1
+            elif t == "method":
+                result[rel]["methods"] += 1
+
+        return result
+
     def build_file_imports(self) -> dict:
         """
         Build {source_rel_path: [target_rel_path, ...]} from parsed imports.

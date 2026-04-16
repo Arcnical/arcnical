@@ -110,16 +110,24 @@ class CLIBridge:
                 "--llm-provider", provider,
             ]
 
-            # Add API key if provided
-            if api_key and depth == "standard":
-                cmd.extend(["--llm-api-key", api_key])
-
             # Force UTF-8 mode so Windows cp1252 doesn't choke on emoji in rich output.
             # PYTHONUTF8=1 enables PEP 540 UTF-8 mode globally (sys.stdout/stderr use utf-8
             # before rich.Console initialises at import time).
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
             env["PYTHONUTF8"] = "1"
+
+            # Inject API key — as CLI flag and as env var so the config
+            # loader picks it up regardless of which path it takes.
+            api_key = (api_key or "").strip()
+            if api_key:
+                cmd.extend(["--llm-api-key", api_key])
+                env_key_map = {
+                    "claude":  "ANTHROPIC_API_KEY",
+                    "openai":  "OPENAI_API_KEY",
+                    "gemini":  "GOOGLE_API_KEY",
+                }
+                env[env_key_map.get(provider, "ANTHROPIC_API_KEY")] = api_key
 
             result = subprocess.run(
                 cmd,

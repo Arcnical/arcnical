@@ -76,11 +76,10 @@ class L4ReviewAgent:
             # Add L4 recommendations to report
             if l4_recommendations:
                 repo_analysis.recommendations.extend(l4_recommendations)
-                repo_analysis.findings_count = len(repo_analysis.recommendations)
 
             logger.info(
                 f"L4 review complete. Added {len(l4_recommendations)} recommendations. "
-                f"Total: {repo_analysis.findings_count}"
+                f"Total: {len(repo_analysis.recommendations)}"
             )
 
             return repo_analysis

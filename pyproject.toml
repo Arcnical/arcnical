@@ -42,6 +42,7 @@ dependencies = [
     
     # LLM & AI
     "anthropic>=0.18.0",           # Anthropic Claude API
+    "openai>=1.0",                 # OpenAI GPT API
     
     # Data & Schema
     "pydantic>=2.5.0",             # Output schema validation

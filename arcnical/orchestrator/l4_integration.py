@@ -64,22 +64,17 @@ class L4Integration:
 
             updated_report = l4_agent.review(report)
 
-            # Add provider info to metadata if available
+            # Update model name in metadata if available
             if (
                 hasattr(updated_report, "metadata")
                 and updated_report.metadata is not None
             ):
                 updated_report.metadata.model = l4_agent.get_model_name()
-                if not hasattr(updated_report.metadata, "llm_provider"):
-                    # Add llm_provider if not present
-                    updated_report.metadata.llm_provider = (
-                        l4_agent.get_provider_name()
-                    )
 
             logger.info(
                 f"L4 review complete. "
                 f"Added {len(updated_report.recommendations)} recommendations. "
-                f"Total: {updated_report.findings_count if hasattr(updated_report, 'findings_count') else 'N/A'}"
+                f"Total: {len(updated_report.recommendations)}"
             )
 
             return updated_report

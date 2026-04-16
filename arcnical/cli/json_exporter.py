@@ -37,6 +37,7 @@ class AnalysisExporter:
         filename: str = "latest_analysis.json",
         per_file_loc: Optional[Dict[str, int]] = None,
         file_imports: Optional[Dict[str, list]] = None,
+        per_file_metrics: Optional[Dict[str, dict]] = None,
         repo_path: Optional[str] = None,
     ) -> Path:
         """
@@ -60,6 +61,7 @@ class AnalysisExporter:
             report,
             per_file_loc=per_file_loc or {},
             file_imports=file_imports or {},
+            per_file_metrics=per_file_metrics or {},
             repo_path=repo_path or "",
         )
 
@@ -74,6 +76,7 @@ class AnalysisExporter:
         report: Report,
         per_file_loc: Optional[Dict[str, int]] = None,
         file_imports: Optional[Dict[str, list]] = None,
+        per_file_metrics: Optional[Dict[str, dict]] = None,
         repo_path: str = "",
     ) -> Dict[str, Any]:
         """
@@ -107,6 +110,35 @@ class AnalysisExporter:
         depth = report.metadata.depth.value if hasattr(report.metadata.depth, "value") else str(report.metadata.depth)
         ts = report.metadata.generated_at.isoformat() if report.metadata.generated_at else ""
 
+        # Build per-file module_metrics
+        pfm = per_file_metrics or {}
+        pfl = {k.replace("\\", "/"): v for k, v in (per_file_loc or {}).items()}
+        fi  = {k.replace("\\", "/"): v for k, v in (file_imports or {}).items()}
+        module_metrics = []
+        for path, loc in pfl.items():
+            sym = pfm.get(path, {})
+            deps = len(fi.get(path, []))
+            if loc > 1000:
+                risk = "CRITICAL"
+            elif loc > 600:
+                risk = "HIGH"
+            elif loc > 300:
+                risk = "MEDIUM"
+            elif loc > 100:
+                risk = "LOW"
+            else:
+                risk = "OK"
+            module_metrics.append({
+                "module": path,
+                "loc": loc,
+                "complexity": round(loc / 50, 1),   # heuristic until radon runs
+                "functions": sym.get("functions", 0),
+                "classes": sym.get("classes", 0),
+                "dependencies": deps,
+                "risk": risk,
+            })
+        module_metrics.sort(key=lambda m: m["loc"], reverse=True)
+
         return {
             "metadata": self._metadata_to_dict(report.metadata),
             "scores": self._scores_to_dict(report.scores),
@@ -125,6 +157,7 @@ class AnalysisExporter:
             "llm_provider": provider,
             "analysis_depth": depth,
             "analysis_timestamp": ts,
+            "module_metrics": module_metrics,
         }
 
     def _metadata_to_dict(self, metadata: Any) -> Dict[str, Any]:

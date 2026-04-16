@@ -175,6 +175,7 @@ def analyze(
                 report,
                 per_file_loc=orchestrator.file_loc,
                 file_imports=orchestrator.build_file_imports(),
+                per_file_metrics=orchestrator.build_per_file_metrics(),
                 repo_path=repo_path,
             )
             console.print(f"[green]✓[/green] Exported to {json_path}", style="green")
