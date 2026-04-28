@@ -123,29 +123,82 @@ class StreamlitGraphComponent:
         return "#4fc3f7"       # light blue (default / normal import)
 
     @staticmethod
-    def display_graph_in_streamlit(graph: nx.DiGraph) -> None:
+    def _apply_filter(graph: nx.DiGraph, filter_mode: str) -> nx.DiGraph:
+        """Return a subgraph matching *filter_mode*."""
+        if filter_mode == "Critical Path":
+            # Nodes whose LOC puts them in Critical or High risk tier
+            keep = {
+                n for n, d in graph.nodes(data=True)
+                if d.get("loc", 0) > 300
+            }
+            # Include direct neighbours so edges have context
+            neighbours: set = set()
+            for n in keep:
+                neighbours.update(graph.predecessors(n))
+                neighbours.update(graph.successors(n))
+            keep |= neighbours
+            return graph.subgraph(keep).copy() if keep else graph
+
+        if filter_mode == "Circular Deps":
+            # Use SCCs (O(V+E)) instead of simple_cycles (exponential).
+            # Any SCC with >1 node means those nodes are mutually reachable → cycle.
+            sccs = [scc for scc in nx.strongly_connected_components(graph) if len(scc) > 1]
+            if not sccs:
+                st.info("No circular dependencies detected in this repository.")
+                return nx.DiGraph()
+            keep = {node for scc in sccs for node in scc}
+            sub = graph.subgraph(keep).copy()
+            # Mark edges that stay within an SCC (the actual cycle edges) red
+            scc_sets = sccs  # already a list of sets
+            for u, v in sub.edges():
+                if any(u in scc and v in scc for scc in scc_sets):
+                    sub[u][v]["color"] = "#ff5252"
+            return sub
+
+        if filter_mode == "Hub Modules":
+            degrees = dict(graph.degree())
+            if not degrees:
+                return graph
+            # Keep top 15 most-connected nodes (or top 20 %, whichever is larger)
+            top_n = max(15, len(degrees) // 5)
+            keep = {n for n, _ in sorted(degrees.items(), key=lambda x: x[1], reverse=True)[:top_n]}
+            return graph.subgraph(keep).copy() if keep else graph
+
+        # "All Modules" — no filtering
+        return graph
+
+    @staticmethod
+    def display_graph_in_streamlit(graph: nx.DiGraph, filter_mode: str = "All Modules") -> None:
         """Render dependency graph as an interactive plotly figure."""
         if not graph.nodes():
             st.info("No graph data available. Run analysis first.")
             return
 
+        subgraph = StreamlitGraphComponent._apply_filter(graph, filter_mode)
+        if not subgraph.nodes():
+            return  # _apply_filter already showed an info/warning message
+
         # Limit nodes for performance — keep the largest files
-        nodes = list(graph.nodes(data=True))
+        nodes = list(subgraph.nodes(data=True))
         if len(nodes) > StreamlitGraphComponent.MAX_NODES:
             nodes_sorted = sorted(nodes, key=lambda n: n[1].get("loc", 0), reverse=True)
             keep = {n[0] for n in nodes_sorted[:StreamlitGraphComponent.MAX_NODES]}
-            subgraph = graph.subgraph(keep)
+            subgraph = subgraph.subgraph(keep)
             st.caption(
                 f"Showing top {StreamlitGraphComponent.MAX_NODES} files by LOC "
                 f"({len(graph.nodes())} total)."
             )
-        else:
-            subgraph = graph
 
-        # Layout — spring is good for small graphs; fall back to random for large
+        if filter_mode != "All Modules":
+            st.caption(
+                f"Filter: **{filter_mode}** — {len(subgraph.nodes())} of "
+                f"{len(graph.nodes())} modules shown."
+            )
+
+        # Layout — spring for small graphs (capped iterations), random for large
         n = len(subgraph.nodes())
-        if n <= 80:
-            pos = nx.spring_layout(subgraph, seed=42, k=1.8)
+        if n <= 40:
+            pos = nx.spring_layout(subgraph, seed=42, k=1.8, iterations=30)
         else:
             pos = nx.random_layout(subgraph, seed=42)
 

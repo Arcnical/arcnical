@@ -914,7 +914,7 @@ def render_score_ring(label: str, value: int, color: str) -> str:
     """
     Builds one score-ring cell as a raw HTML string.
     Must be used inside render_scores_panel_component() which renders via
-    st.iframe() — the only Streamlit call that does NOT sanitise SVG.
+    st.components.v1.html() — the only Streamlit call that does NOT sanitise SVG.
     Circumference of r=30 circle = 2π×30 ≈ 188.5
     """
     # Defensive: score data may be missing/None or non-numeric depending on exporter.
@@ -955,7 +955,7 @@ def render_score_ring(label: str, value: int, color: str) -> str:
 
 def render_scores_panel_component(score_items: list) -> None:
     """
-    Renders the Architectural Health Scores card via st.iframe()
+    Renders the Architectural Health Scores card via st.components.v1.html()
     to avoid Streamlit's markdown sanitiser stripping <svg> and <circle> tags.
     score_items: list of (label, value, color) tuples.
     """
@@ -976,7 +976,7 @@ def render_scores_panel_component(score_items: list) -> None:
         '</body></html>'
     )
     # Increased height to fit the 2×2 grid of larger rings without clipping.
-    st.iframe(html, height=290)
+    st.components.v1.html(html, height=290)
 
 
 def render_badge(level: str) -> str:
@@ -1956,7 +1956,7 @@ def render_graph(data: dict, config: dict):
                 # Fallback: render the HTML directly in an iframe
                 with open(graph_html_path) as f:
                     graph_html = f.read()
-                st.iframe(graph_html, height=420)
+                st.components.v1.html(graph_html, height=420)
                 pyvis_loaded = True
         except Exception as e:
             st.warning(f"Graph render error: {e}")
@@ -1967,7 +1967,7 @@ def render_graph(data: dict, config: dict):
             from arcnical.ui.graph_components import StreamlitGraphComponent
             graph = StreamlitGraphComponent.build_dependency_graph(data)
             if graph.nodes():
-                StreamlitGraphComponent.display_graph_in_streamlit(graph)
+                StreamlitGraphComponent.display_graph_in_streamlit(graph, filter_mode=graph_filter)
             else:
                 st.info("No file structure data found. Run an analysis first.")
         except Exception as e:

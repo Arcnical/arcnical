@@ -11,6 +11,9 @@ from arcnical.cli.json_exporter import AnalysisExporter
 import json
 import logging
 import os
+import re
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -27,6 +30,33 @@ from arcnical.orchestrator.l4_integration import L4Integration
 
 logger = logging.getLogger(__name__)
 console = Console(legacy_windows=False)
+
+_GIT_URL_RE = re.compile(
+    r'^(https?://|git@|git://|ssh://)',
+    re.IGNORECASE,
+)
+
+
+def _is_git_url(value: str) -> bool:
+    return bool(_GIT_URL_RE.match(value))
+
+
+def _clone_repo(url: str) -> tuple[str, str]:
+    """Clone *url* into a fresh temp directory.
+
+    Returns (temp_dir, cloned_repo_path). Caller must delete temp_dir when done.
+    """
+    import git as gitpython
+
+    tmp = tempfile.mkdtemp(prefix="arcnical_clone_")
+    try:
+        console.print(f"[cyan]Cloning {url} ...[/cyan]")
+        gitpython.Repo.clone_from(url, tmp, depth=1)
+        console.print("[green]✓ Clone complete[/green]")
+        return tmp, tmp
+    except Exception:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
 
 
 @click.group()
@@ -52,7 +82,7 @@ def cli(debug: bool) -> None:
 
 
 @cli.command()
-@click.argument("repo_path", type=click.Path(exists=True))
+@click.argument("repo_path", type=str)
 @click.option(
     "--json",
     "output_json",
@@ -112,11 +142,19 @@ def analyze(
         arcnical analyze ./myrepo --json
         arcnical analyze ./myrepo --force  # Bypass qualification failure
     """
+    clone_tmp: Optional[str] = None
     try:
-        # Normalize input
-        repo_path = str(Path(repo_path).resolve())
         depth = depth.lower()
-        
+
+        # Auto-clone when a URL is supplied instead of a local path.
+        if _is_git_url(repo_path):
+            try:
+                clone_tmp, repo_path = _clone_repo(repo_path)
+            except Exception as e:
+                raise click.ClickException(f"Failed to clone repository: {e}")
+
+        repo_path = str(Path(repo_path).resolve())
+
         if not Path(repo_path).is_dir():
             raise click.ClickException(f"Repository not found: {repo_path}")
         
@@ -350,12 +388,15 @@ def analyze(
             console.print(f"  🟢 Low: {low}")
             
             console.print("\n✅ Analysis complete", style="green")
-    
+
     except click.ClickException:
         raise
     except Exception as e:
         logger.error(f"Analysis failed: {e}", exc_info=True)
         raise click.ClickException(f"Analysis failed: {e}")
+    finally:
+        if clone_tmp:
+            shutil.rmtree(clone_tmp, ignore_errors=True)
 
 
 @cli.command()
