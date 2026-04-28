@@ -600,3 +600,44 @@ class Orchestrator:
         except Exception:
             pass
         return None
+
+    # ------------------------------------------------------------------
+    # L4B: Reviewer Agent
+    # ------------------------------------------------------------------
+
+    def run_reviewer_agent(self, provider: object, report: Report) -> object:
+        """
+        Run the L4B ReviewerAgent after L4 LLM review completes.
+
+        Extracts Evidence[] from report.recommendations, calls ReviewerAgent.run(),
+        stores the result on self.recommendation_doc, and returns it.
+
+        Args:
+            provider: Any LLMProvider instance (from LLMProviderFactory).
+            report:   The Report produced by L1-L4.
+
+        Returns:
+            RecommendationDocument (never raises; falls back to template on failure).
+        """
+        from arcnical.review.reviewer_agent import ReviewerAgent
+        from arcnical.review.recommendation_doc import RecommendationDocument
+
+        _order = {
+            "Critical": 0, "High": 1, "Medium": 2, "Low": 3,
+            "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3,
+        }
+        sorted_recs = sorted(
+            report.recommendations,
+            key=lambda r: _order.get(
+                r.severity.value if hasattr(r.severity, "value") else str(r.severity), 9
+            ),
+        )
+        evidence = [r.evidence for r in sorted_recs]
+
+        reviewer = ReviewerAgent(provider=provider)  # type: ignore[arg-type]
+        rec_doc: RecommendationDocument = reviewer.run(evidence=evidence, report=report)
+        self.recommendation_doc: Optional[RecommendationDocument] = rec_doc  # type: ignore[assignment]
+        logger.info(
+            "L4B ReviewerAgent complete: %d issues generated", rec_doc.total_issues
+        )
+        return rec_doc

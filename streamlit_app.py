@@ -1698,6 +1698,30 @@ def render_sidebar(data: dict) -> dict:
                 unsafe_allow_html=True,
             )
 
+        # ── Export Recommendations (always visible) ──
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-section-label">Export</div>', unsafe_allow_html=True)
+        _rec_doc = st.session_state.get("recommendation_doc")
+        if _rec_doc:
+            from arcnical.review.html_exporter import export_to_html as _export_html
+            if "recommendation_html" not in st.session_state:
+                st.session_state["recommendation_html"] = _export_html(_rec_doc)
+            st.download_button(
+                label="⬇ Export Recommendations",
+                data=st.session_state["recommendation_html"],
+                file_name=f"arcnical_recommendations_{_rec_doc.analysis_date}.html",
+                mime="text/html",
+                key="export_recommendations_btn",
+                use_container_width=True,
+            )
+        else:
+            st.markdown(
+                '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">'
+                'Enter an API key and run analysis to generate a recommendation report.'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+
     return {
         "provider": provider,
         "depth": depth,
@@ -2410,6 +2434,56 @@ def main():
                         status="ok",
                     )
                     st.success(message)
+
+                    # ── L4B: ReviewerAgent (runs if API key is set) ──
+                    st.session_state.pop("recommendation_doc", None)
+                    st.session_state.pop("recommendation_html", None)
+                    _api_key = (config.get("api_key") or "").strip()
+                    if _api_key:
+                        try:
+                            from pathlib import Path as _P
+                            from arcnical.schema import Evidence as _Ev, FileReference as _FR
+                            from arcnical.review.reviewer_agent import ReviewerAgent as _RA
+                            from arcnical.review.llm.provider_factory import LLMProviderFactory as _Fac
+                            from arcnical.cli.config import ProviderConfigLoader as _CL
+
+                            _prov = config.get("provider", "claude")
+                            _cfg = _CL().get_provider_config(_prov, api_key=_api_key)
+                            _llm = _Fac.create(_prov, _cfg)
+
+                            _sev_ord = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3,
+                                        "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+                            _sorted_findings = sorted(
+                                result.get("findings", []),
+                                key=lambda f: _sev_ord.get(f.get("severity", "Low"), 9),
+                            )
+                            _evidence: list = []
+                            for _f in _sorted_findings:
+                                _ev = _f.get("evidence", {})
+                                if _ev.get("metric"):
+                                    _refs = [
+                                        _FR(file=_r.get("file", "?"), line=_r.get("line"))
+                                        for _r in _ev.get("references", [])
+                                    ]
+                                    _evidence.append(
+                                        _Ev(
+                                            metric=_ev["metric"],
+                                            value=float(_ev.get("value", 0.0)),
+                                            references=_refs,
+                                        )
+                                    )
+
+                            class _ReportProxy:
+                                class scores:
+                                    overall = float(result.get("scores", {}).get("overall", 0.0))
+                                class summary:
+                                    repo = _P(result.get("repo_path", "unknown")).name
+
+                            st.session_state["recommendation_doc"] = (
+                                _RA(_llm).run(_evidence, _ReportProxy())
+                            )
+                        except Exception as _exc:
+                            logger.warning("ReviewerAgent skipped: %s", _exc)
                 else:
                     st.error(message)
 
@@ -2428,7 +2502,21 @@ def main():
             unsafe_allow_html=True,
         )
     with header_right:
-        st.button("⬇ Export", use_container_width=True)
+        _hdr_doc = st.session_state.get("recommendation_doc")
+        if _hdr_doc:
+            from arcnical.review.html_exporter import export_to_html as _hdr_export
+            if "recommendation_html" not in st.session_state:
+                st.session_state["recommendation_html"] = _hdr_export(_hdr_doc)
+            st.download_button(
+                label="⬇ Export",
+                data=st.session_state["recommendation_html"],
+                file_name=f"arcnical_recommendations_{_hdr_doc.analysis_date}.html",
+                mime="text/html",
+                key="export_header_btn",
+                use_container_width=True,
+            )
+        else:
+            st.button("⬇ Export", use_container_width=True, disabled=True)
 
     # ── Navigation tabs (HTML → <nav> .nav-tab) ──
     tabs = st.tabs(["Overview", "Graph", "Metrics", "Files", "Findings", "About"])

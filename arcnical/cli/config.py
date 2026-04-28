@@ -120,7 +120,7 @@ class ProviderConfigLoader:
         if "max_tokens" not in config:
             config["max_tokens"] = 4000
         if "timeout" not in config:
-            config["timeout"] = 30
+            config["timeout"] = 180
 
         logger.debug(f"Config for {provider}: model={config.get('model')}, has_api_key={bool(config.get('api_key'))}")
 

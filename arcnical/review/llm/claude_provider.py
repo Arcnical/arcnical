@@ -27,7 +27,7 @@ class ClaudeProvider(LLMProvider):
         model: str = "claude-sonnet-4-6",
         temperature: float = 0,
         max_tokens: int = 4000,
-        timeout: int = 30,
+        timeout: int = 180,
     ):
         """
         Initialize Claude provider.
