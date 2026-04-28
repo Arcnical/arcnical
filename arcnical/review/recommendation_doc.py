@@ -23,6 +23,7 @@ class RecommendationDocument(BaseModel):
     analysis_date: str
     model_used: str
     health_score: float
+    score_breakdown: dict[str, float] = Field(default_factory=dict)
     severity_summary: dict[str, int] = Field(default_factory=dict)
     issues: list[IssueDetail] = Field(default_factory=list)
     total_issues: int = 0

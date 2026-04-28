@@ -156,7 +156,12 @@ class ReviewerAgent:
         self, issues: list[IssueDetail], report: Any
     ) -> RecommendationDocument:
         today = date.today()
-        score = float(getattr(getattr(report, "scores", None), "overall", 0.0))
+        _scores = getattr(report, "scores", None)
+        score          = float(getattr(_scores, "overall", 0.0))
+        maintainability = float(getattr(_scores, "maintainability", 0.0))
+        # Report object uses .structure; _ReportProxy exposes .complexity after Fix 1
+        complexity      = float(getattr(_scores, "complexity", None) or getattr(_scores, "structure", 0.0))
+        security        = float(getattr(_scores, "security", 100.0))
         repo = getattr(getattr(report, "summary", None), "repo", "unknown")
         summary: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for iss in issues:
@@ -167,6 +172,12 @@ class ReviewerAgent:
             analysis_date=today.isoformat(),
             model_used=self._provider.get_model_name(),
             health_score=score,
+            score_breakdown={
+                "Overall": score,
+                "Maintainability": maintainability,
+                "Complexity": complexity,
+                "Security": security,
+            },
             severity_summary=summary,
             issues=issues,
             total_issues=len(issues),

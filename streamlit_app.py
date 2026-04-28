@@ -616,7 +616,8 @@ code, pre {{
 }}
 
 /* ── STREAMLIT WIDGET OVERRIDES ── */
-.stButton > button {{
+.stButton > button,
+.stDownloadButton > button {{
   background: var(--accent-primary) !important;
   color: white !important;
   border: none !important;
@@ -627,13 +628,17 @@ code, pre {{
   transition: opacity 0.15s !important;
 }}
 
-.stButton > button:hover {{
+.stButton > button:hover,
+.stDownloadButton > button:hover {{
   opacity: 0.9 !important;
   color: white !important;
 }}
 .stButton > button p,
 .stButton > button span,
-.stButton > button div {{
+.stButton > button div,
+.stDownloadButton > button p,
+.stDownloadButton > button span,
+.stDownloadButton > button div {{
   color: white !important;
 }}
 
@@ -1698,29 +1703,6 @@ def render_sidebar(data: dict) -> dict:
                 unsafe_allow_html=True,
             )
 
-        # ── Export Recommendations (always visible) ──
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-section-label">Export</div>', unsafe_allow_html=True)
-        _rec_doc = st.session_state.get("recommendation_doc")
-        if _rec_doc:
-            from arcnical.review.html_exporter import export_to_html as _export_html
-            if "recommendation_html" not in st.session_state:
-                st.session_state["recommendation_html"] = _export_html(_rec_doc)
-            st.download_button(
-                label="⬇ Export Recommendations",
-                data=st.session_state["recommendation_html"],
-                file_name=f"arcnical_recommendations_{_rec_doc.analysis_date}.html",
-                mime="text/html",
-                key="export_recommendations_btn",
-                use_container_width=True,
-            )
-        else:
-            st.markdown(
-                '<div style="font-size:11px;color:var(--text-muted);padding:4px 0;">'
-                'Enter an API key and run analysis to generate a recommendation report.'
-                '</div>',
-                unsafe_allow_html=True,
-            )
 
     return {
         "provider": provider,
@@ -2359,22 +2341,8 @@ def render_cli_section(data: dict, config: dict):
         cmd = f"arcnical analyze {repo} --llm-provider {prov} --llm-model {model} --depth {depth} --output json"
 
     with st.expander("⬡ CLI & Run Configuration", expanded=False):
-        c1, c2 = st.columns([7, 3])
-        with c1:
-            st.markdown(render_cli_block(cmd, "Generated CLI Command"), unsafe_allow_html=True)
-            st.code(cmd, language="bash")
-        with c2:
-            st.markdown(
-                f'<div class="config-panel">'
-                f'<div class="panel-label">Export Options</div>'
-                f'<div class="config-row"><span class="config-key">Format</span>'
-                f'<span class="config-val">JSON · Markdown · PDF</span></div>'
-                f'<div class="config-row"><span class="config-key">Output Dir</span>'
-                f'<span class="config-val">./reports/</span></div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-            st.button("⬇ Export JSON", use_container_width=True)
+        st.markdown(render_cli_block(cmd, "Generated CLI Command"), unsafe_allow_html=True)
+        st.code(cmd, language="bash")
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
@@ -2473,9 +2441,13 @@ def main():
                                         )
                                     )
 
+                            _sc = result.get("scores", {})
                             class _ReportProxy:
                                 class scores:
-                                    overall = float(result.get("scores", {}).get("overall", 0.0))
+                                    overall         = float(_sc.get("overall", 0.0))
+                                    maintainability = float(_sc.get("maintainability", 0.0))
+                                    complexity      = float(_sc.get("complexity", 0.0))
+                                    security        = float(_sc.get("security", 100.0))
                                 class summary:
                                     repo = _P(result.get("repo_path", "unknown")).name
 

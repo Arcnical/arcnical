@@ -42,64 +42,49 @@ class HealthScoreCalculator:
         Returns:
             ArchitectureHealthScore with overall + breakdown scores
         """
-        base_score = 100.0
-        
-        # Deduct for findings (severity-weighted)
         l2_findings = findings.get("l2_findings", [])
         l3_findings = findings.get("l3_findings", [])
         security_findings = findings.get("security_findings", [])
-        
-        # Weight by severity
+
         severity_weight = {
             Severity.CRITICAL: 15,
             Severity.HIGH: 10,
             Severity.MEDIUM: 5,
-            Severity.LOW: 2
+            Severity.LOW: 2,
         }
-        
-        for finding in l2_findings:
-            weight = severity_weight.get(finding.severity, 5)
-            base_score -= weight
-        
-        for finding in l3_findings:
-            weight = severity_weight.get(finding.severity, 5)
-            base_score -= weight
-        
-        for finding in security_findings:
-            weight = severity_weight.get(finding.severity, 15)  # Security weighted higher
-            base_score -= weight
-        
-        # Factor in metrics (optional, if available)
-        complexity_avg = metrics.get("complexity_avg", 0)
-        instability_avg = metrics.get("instability_avg", 0)
-        
-        if complexity_avg > 15:
-            base_score -= min(10, (complexity_avg - 15) / 2)
-        
-        if instability_avg > 0.8:
-            base_score -= min(10, (instability_avg - 0.8) * 50)
-        
-        # Clamp to 0-100
-        overall_score = max(0, min(100, base_score))
-        
-        # Calculate breakdowns
-        maintainability = overall_score - (len(l3_findings) * 2)
-        structure = overall_score - (len(l2_findings) * 3)
-        security_severity_weight = {
+        sec_weight = {
             Severity.CRITICAL: 60,
             Severity.HIGH: 30,
             Severity.MEDIUM: 15,
-            Severity.LOW: 5
+            Severity.LOW: 5,
         }
-        security = 100 - sum(
-            security_severity_weight.get(f.severity, 15) for f in security_findings
-        )
-        
+
+        # Deductions capped per group so many low-severity findings can't floor the score
+        l2_deduction  = min(35, sum(severity_weight.get(f.severity, 5) for f in l2_findings))
+        l3_deduction  = min(25, sum(severity_weight.get(f.severity, 5) for f in l3_findings))
+        sec_deduction = min(40, sum(sec_weight.get(f.severity, 15) for f in security_findings))
+
+        complexity_avg   = metrics.get("complexity_avg", 0)
+        instability_avg  = metrics.get("instability_avg", 0)
+        metrics_deduction = 0.0
+        if complexity_avg > 15:
+            metrics_deduction += min(10, (complexity_avg - 15) / 2)
+        if instability_avg > 0.8:
+            metrics_deduction += min(10, (instability_avg - 0.8) * 50)
+
+        def _clamp(v: float) -> float:
+            return max(0.0, min(100.0, v))
+
+        overall_score  = _clamp(100.0 - l2_deduction - l3_deduction - sec_deduction - metrics_deduction)
+        maintainability = _clamp(100.0 - l3_deduction - metrics_deduction)
+        complexity_score = _clamp(100.0 - l2_deduction - metrics_deduction)
+        security_score   = _clamp(100.0 - sec_deduction)
+
         return ArchitectureHealthScore(
             overall=round(overall_score, 1),
-            maintainability=round(max(0, min(100, maintainability)), 1),
-            structure=round(max(0, min(100, structure)), 1),
-            security=round(max(0, min(100, security)), 1)
+            maintainability=round(maintainability, 1),
+            structure=round(complexity_score, 1),
+            security=round(security_score, 1),
         )
 
 

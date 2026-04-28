@@ -183,7 +183,7 @@ class AnalysisExporter:
         return {
             "overall": scores.overall,
             "maintainability": scores.maintainability,
-            "structure": scores.structure,
+            "complexity": scores.structure,
             "security": scores.security,
         }
 
