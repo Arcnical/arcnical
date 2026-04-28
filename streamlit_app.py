@@ -1612,21 +1612,8 @@ def render_sidebar(data: dict) -> dict:
             type="password",
             placeholder=f"{env_key_map.get(provider, 'API_KEY')} …",
             key="api_key_input",
-            disabled=True,
         ).strip()
 
-        st.markdown(
-            """
-            <style>
-            div[data-testid="stRadio"] label:last-of-type {
-                opacity: 0.38;
-                pointer-events: none;
-                cursor: not-allowed;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
         depth = st.radio(
             "Analysis Depth",
             options=["quick", "standard"],
@@ -1634,7 +1621,6 @@ def render_sidebar(data: dict) -> dict:
             key="depth_radio",
             horizontal=True,
         )
-        depth = "quick"  # standard is display-only (coming soon)
 
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 

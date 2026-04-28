@@ -32,7 +32,8 @@
       "Bash(PYTHONUTF8=1 PYTHONIOENCODING=utf-8 python -m arcnical analyze .arcnical/clones/Arcnical_arcnical --depth quick)",
       "Bash(PYTHONUTF8=1 PYTHONIOENCODING=utf-8 python -m arcnical analyze .arcnical/clones/vinta_awesome-python --depth quick)",
       "Bash(PYTHONUTF8=1 PYTHONIOENCODING=utf-8 python -m arcnical analyze .arcnical/clones/sibisiddharth8_VisionSoC --depth quick)",
-      "Bash(.venv/Scripts/python *)"
+      "Bash(.venv/Scripts/python *)",
+      "Bash(awk 'NR==1 || /^def / || NR>=1500 && NR<=1650 {print NR\": \"$0}' /d/Projects/arcnical_repo/streamlit_app.py)"
     ]
   }
 }
