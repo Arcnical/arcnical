@@ -13,8 +13,17 @@ from .base import (
     ProviderTimeoutError,
 )
 from .claude_provider import ClaudeProvider
-from .openai_provider import OpenAIProvider
-from .gemini_provider import GeminiProvider
+
+try:
+    from .openai_provider import OpenAIProvider
+except ImportError:
+    OpenAIProvider = None  # type: ignore[assignment,misc]
+
+try:
+    from .gemini_provider import GeminiProvider
+except ImportError:
+    GeminiProvider = None  # type: ignore[assignment,misc]
+
 from .mock_provider import MockLLMProvider
 from .provider_factory import LLMProviderFactory
 

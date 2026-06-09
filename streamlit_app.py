@@ -49,11 +49,14 @@ COMPONENTS MAPPED
 """
 
 import json
+import logging
 import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 import streamlit as st
 
@@ -2417,7 +2420,9 @@ def main():
 
                             _prov = config.get("provider", "claude")
                             _cfg = _CL().get_provider_config(_prov, api_key=_api_key)
-                            _llm = _Fac.create(_prov, _cfg)
+                            # Only pass kwargs ClaudeProvider/OpenAI/Gemini providers accept
+                            _known_keys = {"api_key", "model", "temperature", "max_tokens", "timeout"}
+                            _llm = _Fac.create(_prov, {k: v for k, v in _cfg.items() if k in _known_keys})
 
                             _sev_ord = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3,
                                         "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
@@ -2429,10 +2434,14 @@ def main():
                             for _f in _sorted_findings:
                                 _ev = _f.get("evidence", {})
                                 if _ev.get("metric"):
-                                    _refs = [
-                                        _FR(file=_r.get("file", "?"), line=_r.get("line"))
-                                        for _r in _ev.get("references", [])
-                                    ]
+                                    _refs = []
+                                    for _r in _ev.get("references", []):
+                                        try:
+                                            # line=0 fails FileReference ge=1; coerce to None
+                                            _line = _r.get("line") or None
+                                            _refs.append(_FR(file=_r.get("file", "?"), line=_line))
+                                        except Exception:
+                                            pass
                                     _evidence.append(
                                         _Ev(
                                             metric=_ev["metric"],
@@ -2441,13 +2450,20 @@ def main():
                                         )
                                     )
 
-                            _sc = result.get("scores", {})
+                            _sc = result.get("scores", {}) if isinstance(result.get("scores"), dict) else {}
+
+                            def _safe_float(v, default=0.0):
+                                try:
+                                    return float(v or default)
+                                except (TypeError, ValueError):
+                                    return default
+
                             class _ReportProxy:
                                 class scores:
-                                    overall         = float(_sc.get("overall", 0.0))
-                                    maintainability = float(_sc.get("maintainability", 0.0))
-                                    complexity      = float(_sc.get("complexity", 0.0))
-                                    security        = float(_sc.get("security", 100.0))
+                                    overall         = _safe_float(_sc.get("overall"),         0.0)
+                                    maintainability = _safe_float(_sc.get("maintainability"), 0.0)
+                                    complexity      = _safe_float(_sc.get("complexity"),      0.0)
+                                    security        = _safe_float(_sc.get("security"),        100.0)
                                 class summary:
                                     repo = _P(result.get("repo_path", "unknown")).name
 
@@ -2456,6 +2472,7 @@ def main():
                             )
                         except Exception as _exc:
                             logger.warning("ReviewerAgent skipped: %s", _exc)
+                            st.warning(f"Recommendation report could not be generated: {_exc}")
                 else:
                     st.error(message)
 
@@ -2488,7 +2505,16 @@ def main():
                 use_container_width=True,
             )
         else:
-            st.button("⬇ Export", use_container_width=True, disabled=True)
+            _export_json = json.dumps(data, indent=2, default=str)
+            _ts = (data.get("analysis_timestamp") or datetime.now().strftime("%Y-%m-%d"))[:10]
+            st.download_button(
+                label="⬇ Export",
+                data=_export_json,
+                file_name=f"arcnical_analysis_{_ts}.json",
+                mime="application/json",
+                key="export_header_btn",
+                use_container_width=True,
+            )
 
     # ── Navigation tabs (HTML → <nav> .nav-tab) ──
     tabs = st.tabs(["Overview", "Graph", "Metrics", "Files", "Findings", "About"])
