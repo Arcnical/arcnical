@@ -35,12 +35,11 @@ uv sync --all-extras
 .venv\Scripts\Activate.ps1
 # On macOS/Linux:
 source .venv/bin/activate
-```
 
 # 5. run  streamlit run streamlit_app.py
 You can now view your Streamlit app in your browser.
 Local URL: http://localhost:8501
-
+```
 > **Note for Windows users:** If `pytest`, `ruff`, `mypy`, or `arcnical` are not recognised after activating the venv, add the Scripts directory to your PATH permanently:
 > ```powershell
 > [Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$PWD\.venv\Scripts", "User")
